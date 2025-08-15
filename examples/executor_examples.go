@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	"ddns/executor"
+	"github.com/jq1836/DDNS/executor"
 )
 
 // Example 1: Database operation with retries

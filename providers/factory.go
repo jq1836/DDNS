@@ -3,7 +3,7 @@ package providers
 import (
 	"fmt"
 
-	"ddns/ddns"
+	"github.com/jq1836/DDNS/ddns"
 )
 
 // Factory creates DDNS providers based on configuration

@@ -14,6 +14,19 @@ type mockProvider struct {
 	validateResult error
 }
 
+// mockIPDetector for testing
+type mockIPDetector struct {
+	ip         string
+	shouldFail bool
+}
+
+func (m *mockIPDetector) GetPublicIP(ctx context.Context) (string, error) {
+	if m.shouldFail {
+		return "", &mockError{"IP detection failed"}
+	}
+	return m.ip, nil
+}
+
 func newMockProvider(name string) *mockProvider {
 	return &mockProvider{
 		name:    name,
@@ -73,7 +86,9 @@ func TestServiceUpdateIP(t *testing.T) {
 		TTL:        300,
 	}
 
-	service := NewService(provider, config)
+	// Mock IP detector that returns a known IP
+	ipDetector := &mockIPDetector{ip: "203.0.113.1"}
+	service := NewServiceWithIPDetector(provider, config, ipDetector)
 
 	// Test successful update
 	resp, err := service.UpdateIP(context.Background())
@@ -88,6 +103,12 @@ func TestServiceUpdateIP(t *testing.T) {
 	if resp.Message == "" {
 		t.Error("Expected non-empty message")
 	}
+
+	// Verify the record was updated with the mocked IP
+	key := config.Domain + ":" + config.RecordType
+	if provider.records[key] != "203.0.113.1" {
+		t.Errorf("Expected record to be updated with IP 203.0.113.1, got %s", provider.records[key])
+	}
 }
 
 func TestServiceUpdateIPNoChangeNeeded(t *testing.T) {
@@ -98,24 +119,48 @@ func TestServiceUpdateIPNoChangeNeeded(t *testing.T) {
 		TTL:        300,
 	}
 
-	// Pre-populate with current IP (this would be the actual IP in real usage)
-	// For testing, we'll simulate that the record already has the "current" IP
-	provider.records["example.com:A"] = "192.168.1.1"
+	// Pre-populate with current IP that matches what the IP detector will return
+	currentIP := "203.0.113.1"
+	provider.records["example.com:A"] = currentIP
 
-	service := NewService(provider, config)
+	// Mock IP detector that returns the same IP as the existing record
+	ipDetector := &mockIPDetector{ip: currentIP}
+	service := NewServiceWithIPDetector(provider, config, ipDetector)
 
-	// Mock the IP detection to return the same IP
-	// In a real implementation, you might inject this dependency
 	resp, err := service.UpdateIP(context.Background())
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
 
-	// The behavior depends on whether the current IP matches
-	// Since we can't easily mock the IP detection in this test,
-	// we'll just verify the service runs without error
 	if !resp.Success {
 		t.Error("Expected successful response")
+	}
+
+	// Should indicate no change was needed
+	if resp.Message != "Record already up to date" {
+		t.Errorf("Expected 'Record already up to date' message, got %s", resp.Message)
+	}
+}
+
+func TestServiceUpdateIPDetectionFails(t *testing.T) {
+	provider := newMockProvider("test")
+	config := Config{
+		Domain:     "example.com",
+		RecordType: "A",
+		TTL:        300,
+	}
+
+	// Mock IP detector that fails
+	ipDetector := &mockIPDetector{shouldFail: true}
+	service := NewServiceWithIPDetector(provider, config, ipDetector)
+
+	resp, err := service.UpdateIP(context.Background())
+	if err == nil {
+		t.Fatal("Expected error due to IP detection failure")
+	}
+
+	if resp != nil {
+		t.Error("Expected nil response when IP detection fails")
 	}
 }
 

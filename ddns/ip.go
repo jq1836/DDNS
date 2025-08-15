@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"ddns/executor"
+	"github.com/jq1836/DDNS/executor"
 )
 
 // IPResponse represents the response from httpbin.org/ip

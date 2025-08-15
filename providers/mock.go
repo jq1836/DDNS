@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"ddns/ddns"
+	"github.com/jq1836/DDNS/ddns"
 )
 
 // MockProvider is a simple mock implementation for testing

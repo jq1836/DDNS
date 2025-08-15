@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"ddns/ddns"
-	"ddns/executor"
+	"github.com/jq1836/DDNS/ddns"
+	"github.com/jq1836/DDNS/executor"
 )
 
 // DuckDNSProvider implements the DDNS Provider interface for DuckDNS

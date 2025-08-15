@@ -2,9 +2,9 @@ package main
 
 import (
 	"context"
-	"ddns/config"
-	"ddns/ddns"
-	"ddns/providers"
+	"github.com/jq1836/DDNS/config"
+	"github.com/jq1836/DDNS/ddns"
+	"github.com/jq1836/DDNS/providers"
 	"log"
 	"os"
 	"os/signal"

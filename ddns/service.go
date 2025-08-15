@@ -25,18 +25,21 @@ type UpdateResponse struct {
 type Provider interface {
 	// UpdateRecord updates a DNS record for the given domain
 	UpdateRecord(ctx context.Context, req UpdateRequest) (*UpdateResponse, error)
-
+	
 	// GetCurrentRecord retrieves the current DNS record value
 	GetCurrentRecord(ctx context.Context, domain, recordType string) (string, error)
-
+	
 	// ValidateCredentials checks if the provider credentials are valid
 	ValidateCredentials(ctx context.Context) error
-
+	
 	// GetProviderName returns the name of the DDNS provider
 	GetProviderName() string
 }
 
-// Config holds configuration for DDNS providers
+// IPDetector defines the interface for detecting public IP addresses
+type IPDetector interface {
+	GetPublicIP(ctx context.Context) (string, error)
+}// Config holds configuration for DDNS providers
 type Config struct {
 	Provider string
 	APIKey   string // This will be the token for DuckDNS
@@ -50,22 +53,29 @@ type Config struct {
 
 // Service manages DDNS updates using the configured provider
 type Service struct {
-	provider Provider
-	config   Config
+	provider   Provider
+	config     Config
+	ipDetector IPDetector
 }
 
 // NewService creates a new DDNS service with the specified provider
 func NewService(provider Provider, config Config) *Service {
+	return NewServiceWithIPDetector(provider, config, &HTTPIPDetector{})
+}
+
+// NewServiceWithIPDetector creates a new DDNS service with a custom IP detector
+func NewServiceWithIPDetector(provider Provider, config Config, ipDetector IPDetector) *Service {
 	return &Service{
-		provider: provider,
-		config:   config,
+		provider:   provider,
+		config:     config,
+		ipDetector: ipDetector,
 	}
 }
 
 // UpdateIP updates the DNS record with the current public IP
 func (s *Service) UpdateIP(ctx context.Context) (*UpdateResponse, error) {
 	// Get current public IP
-	currentIP, err := s.getCurrentPublicIP(ctx)
+	currentIP, err := s.ipDetector.GetPublicIP(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -92,10 +102,11 @@ func (s *Service) UpdateIP(ctx context.Context) (*UpdateResponse, error) {
 	return s.provider.UpdateRecord(ctx, req)
 }
 
-// GetCurrentPublicIP retrieves the current public IP address
-func (s *Service) getCurrentPublicIP(ctx context.Context) (string, error) {
-	// This could be enhanced to support multiple IP detection services
-	// For now, we'll use a simple approach
+// HTTPIPDetector implements IPDetector using HTTP services
+type HTTPIPDetector struct{}
+
+// GetPublicIP retrieves the current public IP address using HTTP services
+func (d *HTTPIPDetector) GetPublicIP(ctx context.Context) (string, error) {
 	return getCurrentPublicIPFromService(ctx)
 }
 
